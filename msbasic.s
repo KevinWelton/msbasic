@@ -4,8 +4,6 @@
 .setcpu "6502"
 .macpack longbranch
 
-.include "wozmon.s"
-
 .include "defines.s"
 .include "macros.s"
 .include "zeropage.s"

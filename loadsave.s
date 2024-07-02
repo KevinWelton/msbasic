@@ -15,6 +15,3 @@
 .ifdef SYM1
 .include "sym1_loadsave.s"
 .endif
-.ifdef BENEATER
-.include "beneater_loadsave.s"
-.endif

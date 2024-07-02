@@ -27,3 +27,7 @@
 .ifdef SYM1
         .byte   0,0,0
 .endif
+
+.ifdef BENEATER
+.include "beneater-bios.s"
+.endif

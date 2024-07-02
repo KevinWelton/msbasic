@@ -1,9 +1,4 @@
-; Send and receive a character over RS232
-; Build via "vasm6502 -Fbin -dotdir <filename>"
-
-; NOTES: For PuTTY on Windows, verify the following...
-;   - "Implicit LF in every CR" is CHECKED
-;   - Backspace key sends Ctrl+H (you won't see char disappear, but cursor will move and entry will behave correctly.)
+; This version of Wozmon is meant to be included in the 18-bios.s file. It is not self contained.
 
 ; NOTE: This is adapted from the version of Woz's original code is from https://github.com/jefftranter/6502/blob/master/asm/wozmon/wozmon.s
 ; ------------------------------------------------------------------------------
@@ -11,6 +6,9 @@
 ;  The WOZ Monitor for the Apple 1
 ;  Written by Steve Wozniak in 1976
 ;  Adapted for BenEater's 6502 kit
+
+.setcpu "65C02"
+.segment "WOZMON"
 
 ; Page 0 Variables
 
@@ -25,11 +23,6 @@ MODE            = $2B             ;  $00=XAM, $7F=STOR, $AE=BLOCK XAM
 
 IN              = $0200           ;  Input buffer to $027F
 
-UART_DATA   = $5000
-UART_STATUS = $5001
-UART_CMD    = $5002
-UART_CTRL   = $5003
-
 CHR_BKSPACE   = $08
 CHR_ESCAPE    = $1b
 CHR_BKSLASH   = $5c
@@ -43,11 +36,7 @@ CHAR_A_UP     = $41
 CHAR_F_UP     = $46
 CHAR_SPACE    = $20
 
-               .org $8000
-               ; Empty
-
-               .org $FF00
-RESET:          lda #$1f          ; UART control register: 8 bit word, 1 stop bit, 19200 baud
+RESETWOZ:       lda #$1f          ; UART control register: 8 bit word, 1 stop bit, 19200 baud
                 sta UART_CTRL
                 lda #$0b          ; UART command register: No parity, echo on, no interrupts
                 sta UART_CMD
@@ -97,7 +86,7 @@ NEXTITEM:       LDA IN,Y          ; Get character.
                 CMP #CHR_COLON    ; ":"?
                 BEQ SETSTOR       ; Yes. Set STOR mode.
                 CMP #CHR_R_UP     ; "R"?
-                BEQ RUNPRG        ; Yes. Run user program.
+                BEQ RUNPROGRAM    ; Yes. Run user program.
                 STX HEXPARSEL     ; $00->HEXPARSEL.
                 STX HEXPARSEH     ;  and HEXPARSEH.
                 STY YSAV          ; Save Y for comparison.
@@ -136,7 +125,7 @@ NOTHEX:         CPY YSAV          ; Check if HEXPARSEL, HEXPARSEH empty (no hex 
 
 TONEXTITEM:     JMP NEXTITEM      ; Get next command item.
 
-RUNPRG:         JMP (XAML)        ; Run at current XAM index.
+RUNPROGRAM:     JMP (XAML)        ; Run at current XAM index.
 
 NOTSTOR:        BMI XAMNEXT       ; B7=0 for XAM, 1 for BLOCK XAM.
 
@@ -198,9 +187,3 @@ echo_delay_loop:
                 bne echo_delay_loop
                 pla
                 RTS               ; Return.
-
-; Interrupt Vectors
-                .org $fffa
-                .word $0f00       ; NMI
-                .word RESET       ; RESET
-                .word $0000       ; BRK/IRQ
