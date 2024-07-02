@@ -1,16 +1,5 @@
-; This version of Wozmon is meant to be included in the 18-bios.s file. It is not self contained.
-
-; NOTE: This is adapted from the version of Woz's original code is from https://github.com/jefftranter/6502/blob/master/asm/wozmon/wozmon.s
-; ------------------------------------------------------------------------------
-
-;  The WOZ Monitor for the Apple 1
-;  Written by Steve Wozniak in 1976
-;  Adapted for BenEater's 6502 kit
-
 .setcpu "65C02"
 .segment "WOZMON"
-
-; Page 0 Variables
 
 XAML            = $24             ;  Last "opened" location Low (eXAMine Low byte)
 XAMH            = $25             ;  Last "opened" location High (eXAMine High byte)
@@ -36,30 +25,35 @@ CHAR_A_UP     = $41
 CHAR_F_UP     = $46
 CHAR_SPACE    = $20
 
-RESETWOZ:       lda #$1f          ; UART control register: 8 bit word, 1 stop bit, 19200 baud
+RESETWOZ:       
+                lda #$1f          ; UART control register: 8 bit word, 1 stop bit, 19200 baud
                 sta UART_CTRL
-                lda #$0b          ; UART command register: No parity, echo on, no interrupts
+                lda #$1b          ; UART command register: No parity, echo on, no interrupts
                 sta UART_CMD
-                lda #CHR_ESCAPE   ; Print \ to start
 
-NOTCR:          CMP #CHR_BKSPACE  ; Backspace?
+NOTCR:          
+                CMP #CHR_BKSPACE  ; Backspace?
                 BEQ BACKSPACE
                 CMP #CHR_ESCAPE   ; ESC?
                 BEQ ESCAPE
                 INY               ; Advance text index.
                 BPL NEXTCHAR      ; Auto ESC if > 127.
 
-ESCAPE:         LDA #CHR_BKSLASH
+ESCAPE:         
+                LDA #CHR_BKSLASH
                 JSR ECHO          ; Output it.
 
-GETLINE:        LDA #CHR_CR       ; CR.
+GETLINE:        
+                LDA #CHR_CR       ; CR.
                 JSR ECHO          ; Output it.
                 LDY #$01          ; Initialize text index.
 
-BACKSPACE:      DEY               ; Back up text index.
+BACKSPACE:      
+                DEY               ; Back up text index.
                 BMI GETLINE       ; Beyond start of line, reinitialize.
 
-NEXTCHAR:       lda UART_STATUS   ; Check if receive buffer is full. Keep waiting if not.
+NEXTCHAR:       
+                lda UART_STATUS   ; Check if receive buffer is full. Keep waiting if not.
                 and #$08
                 beq NEXTCHAR
                 LDA UART_DATA     ; Load character.
@@ -70,14 +64,15 @@ NEXTCHAR:       lda UART_STATUS   ; Check if receive buffer is full. Keep waitin
                 LDY #$FF          ; Reset text index.
                 LDA #$00          ; For XAM mode.
                 TAX               ; 0->X.
-
-SETBLOCK:       asl               ; For BLOCK XAM mode, bit 7 must be 1. Woz's code always assumed the high bit was 1. We don't. So shift the 1 in the . char to bit 7.
-SETSTOR:        ASL               ; Leaves $7B if setting STOR mode.
+SETBLOCK:       
+                asl               ; For BLOCK XAM mode, bit 7 must be 1. Woz's code always assumed the high bit was 1. We don't. So shift the 1 in the . char to bit 7.
+SETSTOR:        
+                ASL               ; Leaves $7B if setting STOR mode.
                 STA MODE          ; $00=XAM, $7B=STOR, $AE=BLOCK XAM.
-
-BLSKIP:         INY               ; Advance text index.
-
-NEXTITEM:       LDA IN,Y          ; Get character.
+BLSKIP:         
+                INY               ; Advance text index.
+NEXTITEM:       
+                LDA IN,Y          ; Get character.
                 CMP #CHR_CR       ; CR?
                 BEQ GETLINE       ; Yes, done this line.
                 CMP #CHR_PERIOD   ; "."?
@@ -91,21 +86,22 @@ NEXTITEM:       LDA IN,Y          ; Get character.
                 STX HEXPARSEH     ;  and HEXPARSEH.
                 STY YSAV          ; Save Y for comparison.
 
-NEXTHEX:        LDA IN,Y          ; Get character for hex test.
+NEXTHEX:        
+                LDA IN,Y          ; Get character for hex test.
                 EOR #$30          ; Map digits to $0-9.
                 CMP #$0A          ; Digit?
                 BCC DIG           ; Yes.
                 ADC #$88          ; Map letter "A"-"F" to $FA-FF.
                 CMP #$FA          ; Hex letter?
                 BCC NOTHEX        ; No, character not hex.
-
 DIG:            ASL
                 ASL               ; Hex digit to MSD of A.
                 ASL
                 ASL
+                
                 LDX #$04          ; Shift count.
-
-HEXSHIFT:       ASL               ; Hex digit left, MSB to carry.
+HEXSHIFT:       
+                ASL               ; Hex digit left, MSB to carry.
                 ROL HEXPARSEL     ; Rotate into LSD.
                 ROL HEXPARSEH     ; Rotate into MSD’s.
                 DEX               ; Done 4 shifts?
@@ -113,7 +109,8 @@ HEXSHIFT:       ASL               ; Hex digit left, MSB to carry.
                 INY               ; Advance text index.
                 BNE NEXTHEX       ; Always taken. Check next character for hex.
 
-NOTHEX:         CPY YSAV          ; Check if HEXPARSEL, HEXPARSEH empty (no hex digits).
+NOTHEX:         
+                CPY YSAV          ; Check if HEXPARSEL, HEXPARSEH empty (no hex digits).
                 BEQ ESCAPE        ; Yes, generate ESC sequence.
                 BIT MODE          ; Test MODE byte.
                 BVC NOTSTOR       ; B6=0 STOR, 1 for XAM and BLOCK XAM
@@ -125,9 +122,11 @@ NOTHEX:         CPY YSAV          ; Check if HEXPARSEL, HEXPARSEH empty (no hex 
 
 TONEXTITEM:     JMP NEXTITEM      ; Get next command item.
 
-RUNPROGRAM:     JMP (XAML)        ; Run at current XAM index.
+RUNPROGRAM:     
+                JMP (XAML)        ; Run at current XAM index.
 
-NOTSTOR:        BMI XAMNEXT       ; B7=0 for XAM, 1 for BLOCK XAM.
+NOTSTOR:        
+                BMI XAMNEXT       ; B7=0 for XAM, 1 for BLOCK XAM.
 
                 LDX #$02          ; Byte count.
 SETADR:         LDA HEXPARSEL-1,X ; Copy hex data to
@@ -136,7 +135,8 @@ SETADR:         LDA HEXPARSEL-1,X ; Copy hex data to
                 DEX               ; Next of 2 bytes.
                 BNE SETADR        ; Loop unless X=0.
 
-NXTPRNT:        BNE PRDATA        ; NE means no address to print.
+NXTPRNT:        
+                BNE PRDATA        ; NE means no address to print.
                 LDA #CHR_CR          ; CR.
                 JSR ECHO          ; Output it.
                 LDA XAMH          ; ‘Examine index’ high-order byte.
@@ -146,11 +146,11 @@ NXTPRNT:        BNE PRDATA        ; NE means no address to print.
                 LDA #CHR_COLON      ; ":".
                 JSR ECHO          ; Output it.
 
-PRDATA:         LDA #CHAR_SPACE   ; Blank.
+PRDATA:         
+                LDA #CHAR_SPACE   ; Blank.
                 JSR ECHO          ; Output it.
                 LDA (XAML,X)      ; Get data byte at ‘examine index’.
                 JSR PRBYTE        ; Output it in hex format.
-
 XAMNEXT:        STX MODE          ; 0->MODE (XAM mode).
                 LDA XAML
                 CMP HEXPARSEL     ; Compare ‘examine index’ to hex data.
@@ -161,11 +161,13 @@ XAMNEXT:        STX MODE          ; 0->MODE (XAM mode).
                 BNE MOD8CHK       ; Increment ‘examine index’.
                 INC XAMH
 
-MOD8CHK:        LDA XAML          ; Check low-order ‘examine index’ byte
+MOD8CHK:        
+                LDA XAML          ; Check low-order ‘examine index’ byte
                 AND #$07          ;  For MOD 8=0
                 BPL NXTPRNT       ; Always taken.
 
-PRBYTE:         PHA               ; Save A for LSD.
+PRBYTE:         
+                PHA               ; Save A for LSD.
                 LSR
                 LSR
                 LSR               ; MSD to LSD position.
@@ -173,13 +175,15 @@ PRBYTE:         PHA               ; Save A for LSD.
                 JSR PRHEX         ; Output hex digit.
                 PLA               ; Restore A.
 
-PRHEX:          AND #$0F          ; Mask LSD for hex print.
+PRHEX:          
+                AND #$0F          ; Mask LSD for hex print.
                 ORA #CHR_ZERO     ; Add "0".
                 CMP #CHR_NINE+1   ; Digit?
                 BCC ECHO          ; Yes, output it.
                 ADC #$06          ; Add offset for letter. 
 
-ECHO:           pha
+ECHO:           
+                pha
                 sta UART_DATA
                 ldx #$ff
 echo_delay_loop:

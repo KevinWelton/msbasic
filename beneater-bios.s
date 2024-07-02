@@ -3,7 +3,7 @@
 ; Link with "ld65 -C bios.cfg -Ln bios.sym <objfile>"
 
 ; Start BASIC using the address of COLD_START label (see output lbl file when building BASIC)
-;   Right now that is at $9F06. So in Wozmon, enter "9F06" then enter "R"
+;   For example, if COLD_START is $9F06,  "9F06" <newline> followed by "R".
 
 .setcpu "65C02"
 .debuginfo           ; Generate symbol table
