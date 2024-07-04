@@ -16,6 +16,7 @@ CHR_BKSPACE   = $08
 CHR_ESCAPE    = $1b
 CHR_BKSLASH   = $5c
 CHR_CR        = $0d
+CHR_LF        = $0a
 CHR_PERIOD    = $2e
 CHR_COLON     = $3a
 CHR_R_UP      = $52
@@ -46,6 +47,8 @@ ESCAPE:
 GETLINE:        
                 LDA #CHR_CR       ; CR.
                 JSR ECHO          ; Output it.
+                LDA #CHR_LF
+                JSR ECHO
                 LDY #$01          ; Initialize text index.
 
 BACKSPACE:      
@@ -137,8 +140,10 @@ SETADR:         LDA HEXPARSEL-1,X ; Copy hex data to
 
 NXTPRNT:        
                 BNE PRDATA        ; NE means no address to print.
-                LDA #CHR_CR          ; CR.
+                LDA #CHR_CR       ; CR.
                 JSR ECHO          ; Output it.
+                LDA #CHR_LF
+                JSR ECHO
                 LDA XAMH          ; ‘Examine index’ high-order byte.
                 JSR PRBYTE        ; Output it in hex format.
                 LDA XAML          ; Low-order ‘examine index’ byte.
