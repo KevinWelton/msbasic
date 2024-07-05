@@ -27,6 +27,7 @@ CHR_BKSPACE   = $08
 CHR_ESCAPE    = $1b
 CHR_BKSLASH   = $5c
 CHR_CR        = $0d
+CHR_LF        = $0a
 CHR_PERIOD    = $2e
 CHR_COLON     = $3a
 CHR_R_UP      = $52
@@ -38,7 +39,7 @@ CHAR_SPACE    = $20
 
 RESETWOZ:       lda #$1f          ; UART control register: 8 bit word, 1 stop bit, 19200 baud
                 sta UART_CTRL
-                lda #$0b          ; UART command register: No parity, echo on, no interrupts
+                lda #$8b          ; UART command register: No parity, echo on, no interrupts
                 sta UART_CMD
                 lda #CHR_ESCAPE   ; Print \ to start
 
@@ -54,6 +55,8 @@ ESCAPE:         LDA #CHR_BKSLASH
 
 GETLINE:        LDA #CHR_CR       ; CR.
                 JSR ECHO          ; Output it.
+                LDA #CHR_LF
+                JSR ECHO
                 LDY #$01          ; Initialize text index.
 
 BACKSPACE:      DEY               ; Back up text index.
@@ -137,13 +140,15 @@ SETADR:         LDA HEXPARSEL-1,X ; Copy hex data to
                 BNE SETADR        ; Loop unless X=0.
 
 NXTPRNT:        BNE PRDATA        ; NE means no address to print.
-                LDA #CHR_CR          ; CR.
+                LDA #CHR_CR       ; CR.
                 JSR ECHO          ; Output it.
+                LDA #CHR_LF
+                JSR ECHO
                 LDA XAMH          ; ‘Examine index’ high-order byte.
                 JSR PRBYTE        ; Output it in hex format.
                 LDA XAML          ; Low-order ‘examine index’ byte.
                 JSR PRBYTE        ; Output it in hex format.
-                LDA #CHR_COLON      ; ":".
+                LDA #CHR_COLON    ; ":".
                 JSR ECHO          ; Output it.
 
 PRDATA:         LDA #CHAR_SPACE   ; Blank.
