@@ -23,6 +23,43 @@ SAVE:
 ISCNTC:
     rts
 
+COLDBOOT:
+    lda #$1f          ; UART control register: 8 bit word, 1 stop bit, 19200 baud
+    sta UART_CTRL
+    lda #$8b          ; UART command register: No parity, echo on, no interrupts
+    sta UART_CMD
+    ldx #0
+@premsg:
+    lda BASICMSGSTART, x
+    beq @premsgdone
+    jsr CHROUT
+    inx
+    jmp @premsg
+@premsgdone:
+    lda #>COLD_START
+    jsr PRBYTE
+    lda #<COLD_START
+    jsr PRBYTE
+    ldx #0
+@postmsg:
+    lda BASICMSGEND, x
+    beq @postmsgdone
+    jsr CHROUT
+    inx
+    jmp @postmsg
+@postmsgdone:
+    lda #$0d          ; Print CRLF
+    jsr CHROUT
+    lda #$0a
+    jsr CHROUT
+    jmp RESETWOZ      ; Start Wozmon
+
+BASICMSGSTART:
+    .asciiz "Start MS Basic with "
+
+BASICMSGEND:
+    .asciiz "R"
+
 MONRDKEY:
 CHRIN:
     lda UART_STATUS  ; Check if UART receive buffer is full. If it is, set the carry flag and keep char in A.
@@ -51,5 +88,5 @@ CHROUT:
 
 .segment "RESETVECTORS"
     .word $0f00       ; NMI
-    .word RESETWOZ    ; RESET
+    .word COLDBOOT    ; RESET
     .word $0000       ; BRK/IRQ

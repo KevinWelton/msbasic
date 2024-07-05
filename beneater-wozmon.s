@@ -37,11 +37,7 @@ CHAR_A_UP     = $41
 CHAR_F_UP     = $46
 CHAR_SPACE    = $20
 
-RESETWOZ:       lda #$1f          ; UART control register: 8 bit word, 1 stop bit, 19200 baud
-                sta UART_CTRL
-                lda #$8b          ; UART command register: No parity, echo on, no interrupts
-                sta UART_CMD
-                lda #CHR_ESCAPE   ; Print \ to start
+RESETWOZ:       lda #CHR_ESCAPE   ; Print \ to start
 
 NOTCR:          CMP #CHR_BKSPACE  ; Backspace?
                 BEQ BACKSPACE
