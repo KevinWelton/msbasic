@@ -33,8 +33,6 @@ CHR_COLON     = $3a
 CHR_R_UP      = $52
 CHR_ZERO      = $30
 CHR_NINE      = $39
-CHAR_A_UP     = $41
-CHAR_F_UP     = $46
 CHAR_SPACE    = $20
 
 RESETWOZ:       lda #CHR_ESCAPE   ; Print \ to start
