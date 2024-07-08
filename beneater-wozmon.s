@@ -1,6 +1,6 @@
 ; This version of Wozmon is meant to be included in the 18-bios.s file. It is not self contained.
 
-; NOTE: This is adapted from the version of Woz's original code is from https://github.com/jefftranter/6502/blob/master/asm/wozmon/wozmon.s
+; NOTE: This is adapted from the version of Woz's code at https://github.com/jefftranter/6502/blob/master/asm/wozmon/wozmon.s
 ; ------------------------------------------------------------------------------
 
 ;  The WOZ Monitor for the Apple 1
