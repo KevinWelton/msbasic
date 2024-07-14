@@ -56,12 +56,10 @@ GETLINE:        LDA #CHR_CR       ; CR.
 BACKSPACE:      DEY               ; Back up text index.
                 BMI GETLINE       ; Beyond start of line, reinitialize.
 
-NEXTCHAR:       lda UART_STATUS   ; Check if receive buffer is full. Keep waiting if not.
-                and #$08
-                beq NEXTCHAR
-                LDA UART_DATA     ; Load character.
+NEXTCHAR:
+                jsr CHRIN         ; Does our BIOS ring buffer have anything? If not, keep checking.
+                bcc NEXTCHAR
                 STA IN,Y          ; Add to text buffer.
-                JSR ECHO          ; Display character.
                 CMP #CHR_CR       ; CR?
                 BNE NOTCR         ; No.
                 LDY #$FF          ; Reset text index.
