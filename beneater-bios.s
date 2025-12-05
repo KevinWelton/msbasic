@@ -19,6 +19,10 @@ INPUT_BUFFER: .res $100
 
 .segment "BIOS"
 
+; We use the via chip to control the clear-to-send signal since the UART seems to have a bug
+VIACHIP_PORTA = $6001
+VIACHIP_DIRECTION_PORTA = $6003
+
 UART_DATA   = $5000
 UART_STATUS = $5001
 UART_CMD    = $5002
@@ -38,7 +42,6 @@ COLDBOOT:
     sta UART_CTRL
     lda #$8b          ; UART command register: No parity, echo on, NO interrupts (we will enable before running wozmon)
     sta UART_CMD
-
     ldx #0
 @premsg:
     lda BASICMSGSTART, x
@@ -81,12 +84,20 @@ BASICMSGEND:
 MONRDKEY:
 CHRIN:
     phx
-    jsr SIZE_BUFFER    ; Check if we have characters in our ring buffer. If so, read the next one and set the carry bit.
+    jsr BUFFER_SIZE    ; Check if we have characters in our ring buffer. If so, read the next one and set the carry bit.
     beq @no_keypressed
     jsr READ_BUFFER
     jsr CHROUT
-    sec
+    pha                ; We're about to clobber A which has our character. Push it to the stack and pop it after the upcoming clear-to-send logic.
+    jsr BUFFER_SIZE
+    cmp #$B0           ; If the buffer size (in A) is greater than about 2/3 of the buffer size (about #$B0)
+    bcs @mostly_full   ; If the buffer was mostly full (A - #$B0 >= 0), it means the CMP's subtract didn't need to borrow. (Carry flag is an inverted borrow flag in 6502 subtraction.)
+    lda #00            ; Set VIA chip port A pin 0 low to re-enable clear-to-send signal (it's inverted at the MAX232 before going over the serial cable.)
+    sta VIACHIP_PORTA
+@mostly_full:
+    pla                ; Restore the character we received from CHROUT
     plx
+    sec
     rts
 @no_keypressed:
     plx
@@ -107,8 +118,12 @@ CHROUT:
 ; Initialize our write and read pointers
 ; Modifies: P, A
 INIT_BUFFER:
-    lda READ_PTR    ; Make ring buffer pointers the same
+    lda READ_PTR                  ; Make ring buffer pointers the same
     sta WRITE_PTR
+    lda #$01                      ; Set bit 0 of via chip port A specify pin 0 of port A will be used as output
+    sta VIACHIP_DIRECTION_PORTA
+    lda #$00                      ; Make sure pin 0 of port A is low to so we default to clear-to-send being set (it's inverted at the MAX232 chip before going over the serial cable.)
+    sta VIACHIP_PORTA
     rts
 
 ; Write character in A to WRITE_PTR
@@ -129,7 +144,7 @@ READ_BUFFER:
 
 ; Return bytes in buffer in A
 ; Modifies: P, A
-SIZE_BUFFER:
+BUFFER_SIZE:
     lda WRITE_PTR
     sec
     sbc READ_PTR
@@ -139,9 +154,15 @@ SIZE_BUFFER:
 IRQ_HANDLER:
     pha
     phx
-    lda UART_STATUS   ; Clear the UART's interrupt flag by reading from the status register
+    lda UART_STATUS      ; Clear the UART's interrupt flag by reading from the status register
     lda UART_DATA
     jsr WRITE_BUFFER
+    jsr BUFFER_SIZE
+    cmp #$F0             ; If our input buffer is _almost_ full (remote machine may have sent a few more bytes already), consider it full.
+    bcc @not_almost_full ; The cmp instruction prior will have the carry bit clear if the const (#$F0) is >= to A.
+    lda #$01             ; If the input buffer is full, set VIA chip port A pin 0 high to disable clear-to-send signal (it's inverted at the MAX232 before going over the serial cable.)
+    sta VIACHIP_PORTA
+@not_almost_full:
     plx
     pla
     rti
