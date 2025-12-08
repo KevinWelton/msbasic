@@ -35,7 +35,15 @@ CHR_ZERO      = $30
 CHR_NINE      = $39
 CHAR_SPACE    = $20
 
-RESETWOZ:       lda #CHR_ESCAPE   ; Print \ to start
+RESETWOZ:
+                CLD               ; Clear decimal arithmetic mode (not strictly necessary anymore)
+                NOP               ; Padding to keep this at exactly 256 bytes (probably don't need)
+                LDA #$1f          ; UART control register: 8 bit word, 1 stop bit, 19200 baud
+                STA UART_CTRL
+                LDA #$89          ; UART command register: No parity, no echo, yes interrupts
+                STA UART_CMD
+                CLI               ; Clear interrupt disable (enable interrupts)
+                JSR BIOSINIT      ; Label is in beneater-bios.s
 
 NOTCR:          CMP #CHR_BKSPACE  ; Backspace?
                 BEQ BACKSPACE
@@ -47,8 +55,8 @@ NOTCR:          CMP #CHR_BKSPACE  ; Backspace?
 ESCAPE:         LDA #CHR_BKSLASH
                 JSR ECHO          ; Output it.
 
-GETLINE:        LDA #CHR_CR       ; CR.
-                JSR ECHO          ; Output it.
+GETLINE:        LDA #CHR_CR       ; Print CRLF
+                JSR ECHO
                 LDA #CHR_LF
                 JSR ECHO
                 LDY #$01          ; Initialize text index.
@@ -66,9 +74,11 @@ NEXTCHAR:
                 LDA #$00          ; For XAM mode.
                 TAX               ; 0->X.
 
-SETBLOCK:       asl               ; For BLOCK XAM mode, bit 7 must be 1. Woz's code always assumed the high bit was 1. We don't. So shift the 1 in the . char to bit 7.
+SETBLOCK:       ASL               ; For BLOCK XAM mode, bit 7 must be 1. Woz's code always assumed the high bit was 1. We don't. So shift the 1 in the . char to bit 7.
+
 SETSTOR:        ASL               ; Leaves $7B if setting STOR mode.
-                STA MODE          ; $00=XAM, $7B=STOR, $AE=BLOCK XAM.
+
+SETMODE:        STA MODE          ; $00=XAM, $7B=STOR, $AE=BLOCK XAM.
 
 BLSKIP:         INY               ; Advance text index.
 
@@ -176,11 +186,11 @@ PRHEX:          AND #$0F          ; Mask LSD for hex print.
                 BCC ECHO          ; Yes, output it.
                 ADC #$06          ; Add offset for letter. 
 
-ECHO:           pha
-                sta UART_DATA
-                ldx #$ff
+ECHO:           STA UART_DATA     ; Output character
+                PHA
+                LDA #$ff          ; Init echo delay loop
 echo_delay_loop:
-                dex
-                bne echo_delay_loop
-                pla
+                DEC
+                BNE echo_delay_loop
+                PLA
                 RTS               ; Return.

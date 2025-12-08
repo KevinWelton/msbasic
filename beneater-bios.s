@@ -34,14 +34,7 @@ LOAD:
 SAVE:
     rts
 
-ISCNTC:
-    rts
-
-COLDBOOT:
-    lda #$1f          ; UART control register: 8 bit word, 1 stop bit, 19200 baud
-    sta UART_CTRL
-    lda #$8b          ; UART command register: No parity, echo on, NO interrupts (we will enable before running wozmon)
-    sta UART_CMD
+BIOSINIT:
     ldx #0
 @premsg:
     lda BASICMSGSTART, x
@@ -66,13 +59,17 @@ COLDBOOT:
     jsr CHROUT
     lda #$0a
     jsr CHROUT
-@prepinput:
-    jsr INIT_BUFFER   ; Init our ring buffer and clear the interrupt disable processor flag
-    cli
-    lda #$89          ; UART command register: No parity, echo on, YES interrupts
-    sta UART_CMD
-
-    jmp RESETWOZ      ; Start Wozmon
+; Initialize our write and read pointers
+; Modifies: P, A
+@init_buffer:
+    lda READ_PTR                  ; Make ring buffer pointers the same
+    sta WRITE_PTR
+    lda #$01                      ; Set bit 0 of via chip port A specify pin 0 of port A will be used as output
+    sta VIACHIP_DIRECTION_PORTA
+    lda #$fe                      ; Make sure pin 0 of port A is low to so we default to clear-to-send being set (it's inverted at the MAX232 chip before going over the serial cable.)
+    and VIACHIP_PORTA
+    sta VIACHIP_PORTA
+    rts                           ; Back to wozmon
 
 BASICMSGSTART:
     .asciiz "Start MS Basic with "
@@ -90,9 +87,10 @@ CHRIN:
     jsr CHROUT
     pha                ; We're about to clobber A which has our character. Push it to the stack and pop it after the upcoming clear-to-send logic.
     jsr BUFFER_SIZE
-    cmp #$B0           ; If the buffer size (in A) is greater than about 2/3 of the buffer size (about #$B0)
+    cmp #$b0           ; If the buffer size (in A) is greater than about 2/3 of the buffer size (about #$B0)
     bcs @mostly_full   ; If the buffer was mostly full (A - #$B0 >= 0), it means the CMP's subtract didn't need to borrow. (Carry flag is an inverted borrow flag in 6502 subtraction.)
-    lda #00            ; Set VIA chip port A pin 0 low to re-enable clear-to-send signal (it's inverted at the MAX232 before going over the serial cable.)
+    lda #$fe           ; Set VIA chip port A pin 0 low to re-enable clear-to-send signal (it's inverted at the MAX232 before going over the serial cable.)
+    and VIACHIP_PORTA
     sta VIACHIP_PORTA
 @mostly_full:
     pla                ; Restore the character we received from CHROUT
@@ -113,17 +111,6 @@ CHROUT:
     dec
     bne @txdelay
     pla
-    rts
-
-; Initialize our write and read pointers
-; Modifies: P, A
-INIT_BUFFER:
-    lda READ_PTR                  ; Make ring buffer pointers the same
-    sta WRITE_PTR
-    lda #$01                      ; Set bit 0 of via chip port A specify pin 0 of port A will be used as output
-    sta VIACHIP_DIRECTION_PORTA
-    lda #$00                      ; Make sure pin 0 of port A is low to so we default to clear-to-send being set (it's inverted at the MAX232 chip before going over the serial cable.)
-    sta VIACHIP_PORTA
     rts
 
 ; Write character in A to WRITE_PTR
@@ -158,7 +145,7 @@ IRQ_HANDLER:
     lda UART_DATA
     jsr WRITE_BUFFER
     jsr BUFFER_SIZE
-    cmp #$F0             ; If our input buffer is _almost_ full (remote machine may have sent a few more bytes already), consider it full.
+    cmp #$f0             ; If our input buffer is _almost_ full (remote machine may have sent a few more bytes already), consider it full.
     bcc @not_almost_full ; The cmp instruction prior will have the carry bit clear if the const (#$F0) is >= to A.
     lda #$01             ; If the input buffer is full, set VIA chip port A pin 0 high to disable clear-to-send signal (it's inverted at the MAX232 before going over the serial cable.)
     sta VIACHIP_PORTA
@@ -171,5 +158,5 @@ IRQ_HANDLER:
 
 .segment "RESETVECTORS"
     .word $0f00       ; NMI
-    .word COLDBOOT    ; RESET
+    .word RESETWOZ    ; RESET
     .word IRQ_HANDLER ; IRQ
