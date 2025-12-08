@@ -1,3 +1,23 @@
 10 PRINT"WHAT IS YOUR NAME?
 20 INPUT"(ENTER YOUR NAME)";A$
 30 PRINT"HELLO, ";A$;". I AM YOUR COMPUTER!"
+40 PRINT"PLEASE TYPE SOMETHING AND PRESS ENTER:"
+50 INPUT B$
+60 PRINT"YOU TYPED: ";B$
+70 PRINT"KEEP USING THIS PROGRAM. Have more fun!"
+80 PRINT"I'm gonna print a bunch more lines!"
+90 PRINT"Line 1"
+100 PRINT"Line 2"
+110 PRINT"Now some longer lines!"
+120 PRINT"This is a longer line of text to see how the computer handles it."
+130 PRINT"Here's another longer line to test the display capabilities."
+140 PRINT"More long lines!"
+150 PRINT"The quick brown fox jumps over the lazy dog."
+160 PRINT"1234567890 1234567890 1234567890 1234567890"
+170 PRINT"Need more lines? Here we go!"
+180 PRINT"Line after line, just for fun!"
+190 PRINT"Almost done with the long lines."
+200 PRINT"This is the last long line. Hope you enjoyed it!"
+210 PRINT"THANK YOU FOR USING THIS PROGRAM!"
+220 PRINT"GOODBYE!"
+230 END

@@ -11,17 +11,16 @@
 .segment "WOZMON"
 
 ; Page 0 Variables
+XAML          = $24             ;  Last "opened" location Low (eXAMine Low byte)
+XAMH          = $25             ;  Last "opened" location High (eXAMine High byte)
+STL           = $26             ;  Store address Low
+STH           = $27             ;  Store address High
+HEXPARSEL     = $28             ;  Hex value parsing Low
+HEXPARSEH     = $29             ;  Hex value parsing High
+YSAV          = $2A             ;  Used to see if hex value is given
+MODE          = $2B             ;  $00=XAM, $7F=STOR, $AE=BLOCK XAM
 
-XAML            = $24             ;  Last "opened" location Low (eXAMine Low byte)
-XAMH            = $25             ;  Last "opened" location High (eXAMine High byte)
-STL             = $26             ;  Store address Low
-STH             = $27             ;  Store address High
-HEXPARSEL       = $28             ;  Hex value parsing Low
-HEXPARSEH       = $29             ;  Hex value parsing High
-YSAV            = $2A             ;  Used to see if hex value is given
-MODE            = $2B             ;  $00=XAM, $7F=STOR, $AE=BLOCK XAM
-
-IN              = $0200           ;  Input buffer to $027F
+IN            = $0200           ;  Input buffer to $027F
 
 CHR_BKSPACE   = $08
 CHR_ESCAPE    = $1b
@@ -33,17 +32,16 @@ CHR_COLON     = $3a
 CHR_R_UP      = $52
 CHR_ZERO      = $30
 CHR_NINE      = $39
-CHAR_SPACE    = $20
+CHR_SPACE     = $20
 
-RESETWOZ:
-                CLD               ; Clear decimal arithmetic mode (not strictly necessary anymore)
+RESETWOZ:       CLD               ; Clear decimal arithmetic mode (not strictly necessary anymore)
                 NOP               ; Padding to keep this at exactly 256 bytes (probably don't need)
+                CLI               ; Clear interrupt disable (enable interrupts)
                 LDA #$1f          ; UART control register: 8 bit word, 1 stop bit, 19200 baud
                 STA UART_CTRL
-                LDA #$89          ; UART command register: No parity, no echo, yes interrupts
-                STA UART_CMD
-                CLI               ; Clear interrupt disable (enable interrupts)
-                JSR BIOSINIT      ; Label is in beneater-bios.s
+                LDY #$89          ; UART command register: No parity, no echo, yes interrupts
+                STY UART_CMD
+                JSR INITBIOS
 
 NOTCR:          CMP #CHR_BKSPACE  ; Backspace?
                 BEQ BACKSPACE
@@ -59,14 +57,14 @@ GETLINE:        LDA #CHR_CR       ; Print CRLF
                 JSR ECHO
                 LDA #CHR_LF
                 JSR ECHO
-                LDY #$01          ; Initialize text index.
 
+                LDY #$01          ; Initialize text index.
 BACKSPACE:      DEY               ; Back up text index.
                 BMI GETLINE       ; Beyond start of line, reinitialize.
 
 NEXTCHAR:
-                jsr CHRIN         ; Does our BIOS ring buffer have anything? If not, keep checking.
-                bcc NEXTCHAR
+                JSR CHRIN         ; Does our BIOS ring buffer have anything? If not, keep checking.
+                BCC NEXTCHAR
                 STA IN,Y          ; Add to text buffer.
                 CMP #CHR_CR       ; CR?
                 BNE NOTCR         ; No.
@@ -142,8 +140,8 @@ SETADR:         LDA HEXPARSEL-1,X ; Copy hex data to
                 BNE SETADR        ; Loop unless X=0.
 
 NXTPRNT:        BNE PRDATA        ; NE means no address to print.
-                LDA #CHR_CR       ; CR.
-                JSR ECHO          ; Output it.
+                LDA #CHR_CR       ; Print CRLF
+                JSR ECHO
                 LDA #CHR_LF
                 JSR ECHO
                 LDA XAMH          ; ‘Examine index’ high-order byte.
@@ -153,7 +151,7 @@ NXTPRNT:        BNE PRDATA        ; NE means no address to print.
                 LDA #CHR_COLON    ; ":".
                 JSR ECHO          ; Output it.
 
-PRDATA:         LDA #CHAR_SPACE   ; Blank.
+PRDATA:         LDA #CHR_SPACE   ; Blank.
                 JSR ECHO          ; Output it.
                 LDA (XAML,X)      ; Get data byte at ‘examine index’.
                 JSR PRBYTE        ; Output it in hex format.

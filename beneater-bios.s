@@ -28,13 +28,19 @@ UART_STATUS = $5001
 UART_CMD    = $5002
 UART_CTRL   = $5003
 
+BASICMSGSTART:
+    .asciiz "Start MS Basic with "
+
+BASICMSGEND:
+    .asciiz "R"
+
 LOAD:
     rts
 
 SAVE:
     rts
 
-BIOSINIT:
+INITBIOS:
     ldx #0
 @premsg:
     lda BASICMSGSTART, x
@@ -47,18 +53,14 @@ BIOSINIT:
     jsr PRBYTE
     lda #<COLD_START
     jsr PRBYTE
+
     ldx #0
 @postmsg:
     lda BASICMSGEND, x
-    beq @postmsgdone
+    beq @init_buffer
     jsr CHROUT
     inx
     jmp @postmsg
-@postmsgdone:
-    lda #$0d          ; Print CRLF
-    jsr CHROUT
-    lda #$0a
-    jsr CHROUT
 ; Initialize our write and read pointers
 ; Modifies: P, A
 @init_buffer:
@@ -69,13 +71,7 @@ BIOSINIT:
     lda #$fe                      ; Make sure pin 0 of port A is low to so we default to clear-to-send being set (it's inverted at the MAX232 chip before going over the serial cable.)
     and VIACHIP_PORTA
     sta VIACHIP_PORTA
-    rts                           ; Back to wozmon
-
-BASICMSGSTART:
-    .asciiz "Start MS Basic with "
-
-BASICMSGEND:
-    .asciiz "R"
+    rts               ; Back to wozmon
 
 ; Modifies: P, A
 MONRDKEY:
@@ -93,7 +89,7 @@ CHRIN:
     and VIACHIP_PORTA
     sta VIACHIP_PORTA
 @mostly_full:
-    pla                ; Restore the character we received from CHROUT
+    pla                ; Restore the character we received from the CHROUT call above
     plx
     sec
     rts
@@ -148,6 +144,7 @@ IRQ_HANDLER:
     cmp #$f0             ; If our input buffer is _almost_ full (remote machine may have sent a few more bytes already), consider it full.
     bcc @not_almost_full ; The cmp instruction prior will have the carry bit clear if the const (#$F0) is >= to A.
     lda #$01             ; If the input buffer is full, set VIA chip port A pin 0 high to disable clear-to-send signal (it's inverted at the MAX232 before going over the serial cable.)
+    ora VIACHIP_PORTA
     sta VIACHIP_PORTA
 @not_almost_full:
     plx
