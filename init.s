@@ -124,6 +124,9 @@ COLD_START:
         sta     Z18
   .endif
 .endif
+.ifdef BENEATER
+      jsr LCDINIT
+.endif
 
 ; All non-CONFIG_SMALL versions of BASIC have
 ; the same bug here: While the number of bytes

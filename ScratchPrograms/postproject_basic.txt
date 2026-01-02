@@ -1,0 +1,9 @@
+REM This is the program from the "Hacking Microsoft BASIC" video by Ben Eater after custom BASIC instructions were added.
+
+100 LCDCMD 1
+110 S$="Hello, world!"
+120 FOR I = 1 TO LEN(S$)
+130 CHAR = ASC(MID$(S$, I, 1))
+140 LCDPRINT CHAR
+150 NEXT I
+160 END
